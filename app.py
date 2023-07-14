@@ -27,18 +27,18 @@ def check_mac_address(mac_address):
     with open(csv_file, 'r') as file:
         csv_reader = csv.reader(file)
         for row in csv_reader:
-            if row[0] == mac_address:
+            if row == mac_address:
                 return True
         return False
 
-'''def save_mac_address(mac_address):
+def save_mac_address(mac_address):
     if not os.path.isfile(csv_file):
         with open(csv_file, 'w',newline='') as file:
             csv_writer = csv.writer(file)
             csv_writer.writerow(['Mac Address', 'Browser', 'Browser Version', 'Operating System', 'OS Version', 'Device Family', 'Device Brand', 'Device Model'])
     with open(csv_file, 'a') as file:
         csv_writer = csv.writer(file)
-        csv_writer.writerow([mac_address])'''
+        csv_writer.writerow([mac_address])
 
 def save_user_agent_info(mac_address, user_agent_info):
     file_exists = os.path.isfile(csv_file)
@@ -52,7 +52,6 @@ def save_user_agent_info(mac_address, user_agent_info):
 
 @app.route('/')
 def index():
-    redirect('index.html')
     time.sleep(3)  # Simulate loading for 3 seconds
     connected_interface = get_connected_interface()
     mac_address = get_mac_address(connected_interface)
@@ -93,4 +92,4 @@ def page2():
     return render_template('page2.html', user_agent=user_agent)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0')
