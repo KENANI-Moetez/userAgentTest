@@ -7,8 +7,6 @@ import time
 
 app = Flask(__name__)
 csv_file = 'userData.csv'
-csv_headers = ['Mac Address', 'Browser', 'Browser Version', 'Operating System', 'OS Version', 'Device Family', 'Device Brand', 'Device Model']
-
 
 def get_mac_address(interface):
     try:
@@ -27,28 +25,27 @@ def check_mac_address(mac_address):
     with open(csv_file, 'r') as file:
         csv_reader = csv.reader(file)
         for row in csv_reader:
-            if row == mac_address:
+            if row[0] == mac_address:
                 return True
         return False
 
 def save_mac_address(mac_address):
     if not os.path.isfile(csv_file):
-        with open(csv_file, 'w',newline='') as file:
+        with open(csv_file, 'w') as file:
             csv_writer = csv.writer(file)
-            csv_writer.writerow(['Mac Address', 'Browser', 'Browser Version', 'Operating System', 'OS Version', 'Device Family', 'Device Brand', 'Device Model'])
+            csv_writer.writerow(['Mac Address'])
     with open(csv_file, 'a') as file:
         csv_writer = csv.writer(file)
         csv_writer.writerow([mac_address])
 
 def save_user_agent_info(mac_address, user_agent_info):
-    file_exists = os.path.isfile(csv_file)
-    
-    with open(csv_file, 'a',newline='') as file:
+    if not os.path.isfile(csv_file):
+        with open(csv_file, 'w') as file:
             csv_writer = csv.writer(file)
-            if not file_exists:
-                csv_writer.writerow(['Mac Address', 'Browser', 'Browser Version', 'Operating System', 'OS Version', 'Device Family', 'Device Brand', 'Device Model'])
-
-            csv_writer.writerow([mac_address] + user_agent_info)
+            csv_writer.writerow(['Mac Address', 'Browser', 'Browser Version', 'Operating System', 'OS Version', 'Device Family', 'Device Brand', 'Device Model'])
+    with open(csv_file, 'a') as file:
+        csv_writer = csv.writer(file)
+        csv_writer.writerow([mac_address] + user_agent_info)
 
 @app.route('/')
 def index():
@@ -57,7 +54,7 @@ def index():
     mac_address = get_mac_address(connected_interface)
 
     if not os.path.isfile(csv_file):
-        save_user_agent_info()
+        save_mac_address(mac_address)
         return redirect('/page2')
 
     if not check_mac_address(mac_address):
@@ -67,7 +64,7 @@ def index():
 
 @app.route('/page1')
 def page1():
-    return render_template('page1.html') 
+    return render_template('page1.html')
 
 @app.route('/page2')
 def page2():
@@ -86,10 +83,9 @@ def page2():
         user_agent.device.brand,
         user_agent.device.model
     ]
-    if not check_mac_address(mac_address):
-     save_user_agent_info(mac_address, user_agent_info)
+    save_user_agent_info(mac_address, user_agent_info)
 
     return render_template('page2.html', user_agent=user_agent)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0')
+    app.run(debug=True)
