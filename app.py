@@ -30,10 +30,12 @@ def check_mac_address(mac_address):
         return False
 
 def save_user_data(mac_address, user_agent_info):
+    header = ['Mac Address', 'Browser', 'Browser Version', 'Operating System', 'OS Version', 'Device Family', 'Device Brand', 'Device Model']
+
     if not os.path.isfile(csv_file):
         with open(csv_file, 'w') as file:
             csv_writer = csv.writer(file)
-            csv_writer.writerow(['Mac Address', 'Browser', 'Browser Version', 'Operating System', 'OS Version', 'Device Family', 'Device Brand', 'Device Model'])
+            csv_writer.writerow(header)
     with open(csv_file, 'a') as file:
         csv_writer = csv.writer(file)
         csv_writer.writerow([mac_address] + user_agent_info)
