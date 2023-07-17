@@ -29,16 +29,7 @@ def check_mac_address(mac_address):
                 return True
         return False
 
-def save_mac_address(mac_address):
-    if not os.path.isfile(csv_file):
-        with open(csv_file, 'w') as file:
-            csv_writer = csv.writer(file)
-            csv_writer.writerow(['Mac Address'])
-    with open(csv_file, 'a') as file:
-        csv_writer = csv.writer(file)
-        csv_writer.writerow([mac_address])
-
-def save_user_agent_info(mac_address, user_agent_info):
+def save_user_data(mac_address, user_agent_info):
     if not os.path.isfile(csv_file):
         with open(csv_file, 'w') as file:
             csv_writer = csv.writer(file)
@@ -47,6 +38,7 @@ def save_user_agent_info(mac_address, user_agent_info):
         csv_writer = csv.writer(file)
         csv_writer.writerow([mac_address] + user_agent_info)
 
+
 @app.route('/')
 def index():
     time.sleep(3)  # Simulate loading for 3 seconds
@@ -54,7 +46,7 @@ def index():
     mac_address = get_mac_address(connected_interface)
 
     if not os.path.isfile(csv_file):
-        save_mac_address(mac_address)
+        save_user_data(mac_address, [])
         return redirect('/page2')
 
     if not check_mac_address(mac_address):
@@ -83,9 +75,11 @@ def page2():
         user_agent.device.brand,
         user_agent.device.model
     ]
-    save_user_agent_info(mac_address, user_agent_info)
+
+    save_user_data(mac_address, user_agent_info)
 
     return render_template('page2.html', user_agent=user_agent)
+
 
 if __name__ == '__main__':
     app.run(debug=True)
