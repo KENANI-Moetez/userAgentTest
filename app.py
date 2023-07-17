@@ -40,6 +40,15 @@ def save_user_data(mac_address, user_agent_info):
         csv_writer = csv.writer(file)
         csv_writer.writerow([mac_address] + user_agent_info)
 
+def is_user_data_saved(mac_address):
+    with open(csv_file, 'r') as file:
+        csv_reader = csv.reader(file)
+        for row in csv_reader:
+            if row[0] == mac_address:
+                return True
+        return False
+
+
 
 @app.route('/')
 def index():
@@ -65,6 +74,9 @@ def page2():
     connected_interface = get_connected_interface()
     mac_address = get_mac_address(connected_interface)
 
+    if is_user_data_saved(mac_address):
+        return render_template('page2.html', user_agent=None)
+
     user_agent_string = request.headers.get('User-Agent')
     user_agent = parse(user_agent_string)
 
@@ -81,6 +93,7 @@ def page2():
     save_user_data(mac_address, user_agent_info)
 
     return render_template('page2.html', user_agent=user_agent)
+
 
 
 if __name__ == '__main__':
