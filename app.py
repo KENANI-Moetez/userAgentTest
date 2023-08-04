@@ -11,7 +11,7 @@ app = Flask(__name__)
 
 # Twilio API Credentials
 account_sid = "AC1e90af84045176a38b2a849bd58448da"
-auth_token = "3dc754f41900be44161ad38fa2d925a5"
+auth_token = "516786c5656e84cafdf01dd27702a5bf"
 verified_number = "+17626752413"
 
 csv_file = 'userData.csv'
