@@ -3,10 +3,20 @@ from user_agents import parse
 import netifaces
 import csv
 import os
-import time
+from twilio.rest import Client
+import random
+import phonenumbers
 
 app = Flask(__name__)
+
+# Twilio API Credentials
+account_sid = "AC1e90af84045176a38b2a849bd58448da"
+auth_token = "3dc754f41900be44161ad38fa2d925a5"
+verified_number = "+17626752413"
+
 csv_file = 'userData.csv'
+otp_data = {}
+
 
 def get_mac_address(interface):
     try:
@@ -29,8 +39,8 @@ def check_mac_address(mac_address):
                 return True
         return False
 
-def save_user_data(mac_address, user_agent_info):
-    header = ['Mac Address', 'Browser', 'Browser Version', 'Operating System', 'OS Version', 'Device Family', 'Device Brand', 'Device Model']
+def save_user_data(mac_address, user_agent_info, number):
+    header = ['Mac Address', 'Browser', 'Browser Version', 'Operating System', 'OS Version', 'Device Family', 'Device Brand', 'Device Model', 'Phone Number']
 
     if not os.path.isfile(csv_file):
         with open(csv_file, 'w') as file:
@@ -38,7 +48,7 @@ def save_user_data(mac_address, user_agent_info):
             csv_writer.writerow(header)
     with open(csv_file, 'a') as file:
         csv_writer = csv.writer(file)
-        csv_writer.writerow([mac_address] + user_agent_info)
+        csv_writer.writerow([mac_address] + user_agent_info + [number])
 
 def is_user_data_saved(mac_address):
     with open(csv_file, 'r') as file:
@@ -48,20 +58,36 @@ def is_user_data_saved(mac_address):
                 return True
         return False
 
+def generateOTP():
+    return random.randint(100000, 999999)
 
+def getOTPApi(number, otp):
+    client = Client(account_sid, auth_token)
+    message = client.messages.create(
+        from_=verified_number,
+        to=number,
+        body='Your OTP is ' + str(otp)
+    )
+
+    return True
+
+def formatPhoneNumber(number):
+    try:
+        parsed_number = phonenumbers.parse(number, "TN")
+        if phonenumbers.is_valid_number(parsed_number):
+            formatted_number = phonenumbers.format_number(parsed_number, phonenumbers.PhoneNumberFormat.E164)
+            return formatted_number
+    except phonenumbers.NumberParseException:
+        pass
+    return None
 
 @app.route('/')
 def index():
-    time.sleep(3)  # Simulate loading for 3 seconds
     connected_interface = get_connected_interface()
     mac_address = get_mac_address(connected_interface)
 
-    if not os.path.isfile(csv_file):
-        save_user_data(mac_address, [])
-        return redirect('/page2')
-
     if not check_mac_address(mac_address):
-        return redirect('/page2')
+        return redirect('/login')
 
     return redirect('/page1')
 
@@ -69,13 +95,13 @@ def index():
 def page1():
     return render_template('page1.html')
 
-@app.route('/page2')
-def page2():
+@app.route('/login', methods=['GET', 'POST'])
+def login():
     connected_interface = get_connected_interface()
     mac_address = get_mac_address(connected_interface)
 
     if is_user_data_saved(mac_address):
-        return render_template('page2.html', user_agent=None)
+        return render_template('login.html', user_agent=None)
 
     user_agent_string = request.headers.get('User-Agent')
     user_agent = parse(user_agent_string)
@@ -89,12 +115,46 @@ def page2():
         user_agent.device.brand,
         user_agent.device.model
     ]
+    
+    if request.method == 'POST':
+        number = request.form['number']
+        formatted_number = formatPhoneNumber(number)
+        if formatted_number:
+            otp = generateOTP()
+            otp_data[formatted_number] = str(otp)
+            otp_sent = getOTPApi(formatted_number, otp)
+            if otp_sent:
+                save_user_data(mac_address, user_agent_info, formatted_number)
+                return render_template('enterOTP.html', number=formatted_number)
 
-    save_user_data(mac_address, user_agent_info)
+    save_user_data(mac_address, user_agent_info, "")
 
-    return render_template('page2.html', user_agent=user_agent)
+    return render_template('login.html', user_agent=user_agent)
 
 
+@app.route('/getOTP', methods=['POST'])
+def getOTP():
+    number = request.form['number']
+    formatted_number = formatPhoneNumber(number)
+    if formatted_number:
+        otp = generateOTP()
+        otp_data[formatted_number] = str(otp)
+        otp_sent = getOTPApi(formatted_number, otp)
+        if otp_sent:
+            return render_template('enterOTP.html', number=formatted_number)
+    return "Failed to send OTP. Please try again."
+
+@app.route('/verifyOTP', methods=['POST'])
+def verifyOTP():
+    entered_otp = request.form['otp'].strip()
+    number = request.form['number']
+    formatted_number = formatPhoneNumber(number)
+    if formatted_number and formatted_number in otp_data:
+        sent_otp = otp_data[formatted_number]
+        if entered_otp == sent_otp:
+            del otp_data[formatted_number]
+            return render_template('page1.html')
+    return "Incorrect OTP. Please try again."
 
 if __name__ == '__main__':
     app.run(debug=True)
