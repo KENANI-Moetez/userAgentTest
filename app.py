@@ -11,9 +11,11 @@ app = Flask(__name__)
 
 # Twilio API Credentials
 account_sid = "AC1e90af84045176a38b2a849bd58448da"
-auth_token = "516786c5656e84cafdf01dd27702a5bf"
+auth_token = "66d27fbd66765f6f25a64d201dd474ae"
 verified_number = "+17626752413"
 
+
+userdata=[]
 csv_file = 'userData.csv'
 otp_data = {}
 
@@ -35,7 +37,7 @@ def check_mac_address(mac_address):
     with open(csv_file, 'r') as file:
         csv_reader = csv.reader(file)
         for row in csv_reader:
-            if row[0] == mac_address:
+               if row[0] == mac_address:
                 return True
         return False
 
@@ -80,7 +82,6 @@ def formatPhoneNumber(number):
     except phonenumbers.NumberParseException:
         pass
     return None
-
 @app.route('/')
 def index():
     connected_interface = get_connected_interface()
@@ -119,15 +120,13 @@ def login():
     if request.method == 'POST':
         number = request.form['number']
         formatted_number = formatPhoneNumber(number)
+
         if formatted_number:
             otp = generateOTP()
             otp_data[formatted_number] = str(otp)
             otp_sent = getOTPApi(formatted_number, otp)
             if otp_sent:
-                save_user_data(mac_address, user_agent_info, formatted_number)
                 return render_template('enterOTP.html', number=formatted_number)
-
-    save_user_data(mac_address, user_agent_info, "")
 
     return render_template('login.html', user_agent=user_agent)
 
@@ -149,12 +148,35 @@ def verifyOTP():
     entered_otp = request.form['otp'].strip()
     number = request.form['number']
     formatted_number = formatPhoneNumber(number)
+    
     if formatted_number and formatted_number in otp_data:
         sent_otp = otp_data[formatted_number]
         if entered_otp == sent_otp:
             del otp_data[formatted_number]
+            
+            # Save user data after successful OTP verification
+            connected_interface = get_connected_interface()
+            mac_address = get_mac_address(connected_interface)
+            user_agent_string = request.headers.get('User-Agent')
+            user_agent = parse(user_agent_string)
+            
+            user_agent_info = [
+                user_agent.browser.family,
+                user_agent.browser.version_string,
+                user_agent.os.family,
+                user_agent.os.version_string,
+                user_agent.device.family,
+                user_agent.device.brand,
+                user_agent.device.model
+            ]
+            
+            save_user_data(mac_address, user_agent_info, formatted_number)
+            
             return render_template('page1.html')
-    return "Incorrect OTP. Please try again."
+    
+    error_message = "Incorrect OTP. Please try again."
+    return render_template('enterOTP.html', number=formatted_number, error_message=error_message)
+
 
 if __name__ == '__main__':
     app.run(debug=True)
